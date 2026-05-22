@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="MTC Collections">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#F4F6FA">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%23D98A0B'/%3E%3Ctext x='90' y='118' font-size='90' font-weight='bold' text-anchor='middle' fill='white' font-family='system-ui'%3E%E2%82%B9%3C/text%3E%3C/svg%3E">
+<title>MTC Collections</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<style>
+:root{
+  --bg:#F4F6FA; --card:#FFFFFF; --hover:#F1F5FB; --bdr:#E3E8F0; --bdrL:#D2DAE6;
+  --tx:#1A2235; --dim:#5A6B85; --mut:#8A99B0; --acc:#D98A0B; --accS:#F5A62318;
+  --g:#0E9E6E; --gB:#0E9E6E14; --r:#DC2626; --rB:#DC262610; --y:#D97706; --yB:#D9770612;
+  --o:#EA580C; --oB:#EA580C12; --b:#2563EB; --bB:#2563EB10; --cr:#B91C1C; --crB:#B91C1C12;
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+body{background:var(--bg);color:var(--tx);font-size:13px;line-height:1.4;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-thumb{background:var(--bdrL);border-radius:3px}
+::-webkit-scrollbar-track{background:transparent}
+button{cursor:pointer;transition:all .15s;font-family:inherit;border:none;background:none;color:inherit}
+button:hover{opacity:.85}
+input::placeholder{color:var(--mut)}
+.mono{font-family:"SF Mono",Monaco,"Cascadia Code",monospace}
+.hdr{padding:12px 20px;border-bottom:1px solid var(--bdr);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;position:sticky;top:0;background:var(--bg);z-index:50;padding-left:max(20px,env(safe-area-inset-left));padding-right:max(20px,env(safe-area-inset-right))}
+.logo{font-size:16px;font-weight:700;color:var(--acc)}
+.hdr-meta{font-size:11px;color:var(--mut);margin-left:10px}
+.hdr-right{display:flex;gap:8px;align-items:center}
+.btn-ghost{padding:7px 14px;border-radius:8px;border:1px solid var(--bdr);color:var(--dim);font-size:11px;font-weight:600;background:var(--card)}
+.btn-acc{padding:7px 14px;border-radius:8px;border:1px solid var(--acc);color:#fff;background:var(--acc);font-size:11px;font-weight:700}
+/* Company switcher */
+.coswitch{display:flex;background:var(--card);border:1px solid var(--bdr);border-radius:9px;overflow:hidden}
+.coswitch button{padding:8px 16px;font-size:12px;font-weight:700;color:var(--dim);position:relative}
+.coswitch button.on{background:var(--acc);color:#fff}
+.coswitch button .dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-left:6px;vertical-align:middle}
+.dot-loaded{background:#fff}
+.dot-empty{background:var(--mut);opacity:.4}
+.coswitch button.on .dot-empty{background:#fff;opacity:.5}
+.wrap{padding:16px 20px;max-width:1240px;margin:0 auto}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+.card{position:relative;background:var(--card);border:1px solid var(--bdr);border-radius:10px;padding:14px 16px 14px 18px;box-shadow:0 1px 3px rgba(20,30,50,.04);overflow:hidden}
+.card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--cardAccent,#94A3B8)}
+.card-top{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+.card-ico{width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.card-l{font-size:9px;font-weight:700;letter-spacing:.07em;color:var(--mut);text-transform:uppercase}
+.card-v{font-size:21px;font-weight:800;line-height:1.1}
+.card-s{font-size:10px;color:var(--mut);margin-top:4px}
+.card.c-net{--cardAccent:#475569;background:linear-gradient(135deg,#FFFFFF,#F8FAFC)}
+.card.c-over{--cardAccent:#DC2626;background:linear-gradient(135deg,#FFFFFF,#FEF4F4)}
+.card.c-pend{--cardAccent:#475569;background:linear-gradient(135deg,#FFFFFF,#F8FAFC)}
+.card.c-acc{--cardAccent:#2563EB;background:linear-gradient(135deg,#FFFFFF,#F4F8FE)}
+.card.c-crit{--cardAccent:#B91C1C;background:linear-gradient(135deg,#FEF2F2,#FDE8E8)}
+.controls{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.filter-row{display:contents}
+.search-row{display:contents}
+.pill{padding:5px 13px;border-radius:20px;border:1px solid var(--bdr);background:var(--card);color:var(--dim);font-size:12px;font-weight:600;display:flex;align-items:center;gap:5px}
+.pill.on{border-color:var(--acc);background:var(--accS);color:var(--acc)}
+.pill.p-over.on{border-color:var(--r);background:var(--rB);color:var(--r)}
+.pill.p-crit.on{border-color:var(--cr);background:var(--crB);color:var(--cr)}
+.pill.p-acc.on{border-color:var(--b);background:var(--bB);color:var(--b)}
+.pill .ct{font-size:10px;background:var(--bdr);padding:1px 6px;border-radius:10px}
+.pill.on .ct{background:rgba(0,0,0,.08)}
+.inp{padding:6px 10px;border-radius:6px;border:1px solid var(--bdr);background:var(--card);color:var(--tx);font-size:12px;outline:none}
+.inp:focus{border-color:var(--acc)}
+.sel{padding:6px 8px;border-radius:6px;border:1px solid var(--bdr);background:var(--card);color:var(--dim);font-size:11px;outline:none}
+.plist{display:flex;flex-direction:column;gap:8px}
+.party{background:var(--card);border:1px solid var(--bdr);border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(20,30,50,.04)}
+.party-hd{display:flex;align-items:center;gap:12px;padding:13px 16px;cursor:pointer}
+.party-hd:hover{background:var(--hover)}
+.sev-bar{width:4px;align-self:stretch;border-radius:2px;flex-shrink:0;min-height:40px}
+.party-main{flex:1;min-width:0}
+.party-name{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.party-sub{font-size:11px;color:var(--mut);margin-top:2px}
+.party-amt{text-align:right;flex-shrink:0}
+.party-amt-v{font-size:16px;font-weight:700;font-family:"SF Mono",Monaco,monospace}
+.party-amt-l{font-size:9px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em}
+.party-actions{display:flex;gap:6px;flex-shrink:0}
+.act{padding:7px 11px;border-radius:7px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.act-pdf{background:var(--rB);color:var(--r);border:1px solid #EF444433}
+.act-wa{background:var(--gB);color:var(--g);border:1px solid #10B98133}
+.chev{color:var(--mut);font-size:14px;transition:transform .2s;flex-shrink:0}
+.chev.open{transform:rotate(180deg)}
+.inv-wrap{padding:0 16px 14px 32px}
+.oa-note{margin-bottom:10px;padding:7px 12px;background:var(--bB);border-radius:6px;border:1px solid #3B82F633;font-size:12px;color:var(--b);font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{padding:7px 9px;font-size:10px;font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.05em;text-align:left;border-bottom:1px solid var(--bdrL)}
+td{padding:7px 9px;border-bottom:1px solid #E3E8F0}
+.tag{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;font-family:"SF Mono",Monaco,monospace}
+.modal-bg{position:fixed;inset:0;background:rgba(20,30,50,.45);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
+.modal{background:var(--card);border:1px solid var(--bdrL);border-radius:14px;max-width:560px;width:100%;max-height:85vh;overflow:auto;box-shadow:0 10px 40px rgba(20,30,50,.25)}
+.modal-hd{padding:18px 22px;border-bottom:1px solid var(--bdr);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--card)}
+.modal-bd{padding:20px 22px}
+.msg-box{background:var(--bg);border:1px solid var(--bdr);border-radius:8px;padding:14px;font-size:13px;line-height:1.6;white-space:pre-wrap;color:var(--dim);max-height:280px;overflow:auto}
+.modal-foot{padding:14px 22px;border-top:1px solid var(--bdr);display:flex;gap:8px;flex-wrap:wrap;padding-left:max(22px,env(safe-area-inset-left));padding-right:max(22px,env(safe-area-inset-right))}
+.btn-pri{flex:1;padding:11px;border-radius:9px;background:var(--g);color:#fff;font-weight:700;font-size:13px;min-width:120px}
+.btn-sec{flex:1;padding:11px;border-radius:9px;background:var(--card);border:1px solid var(--bdrL);color:var(--tx);font-weight:600;font-size:13px;min-width:120px}
+.foot{text-align:center;padding:16px;font-size:10px;color:var(--mut)}
+.empty{padding:40px;text-align:center;color:var(--mut)}
+/* Upload / welcome screen */
+.up-screen{min-height:70vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.up-box{width:440px;max-width:100%;text-align:center}
+.up-icon{width:64px;height:64px;border-radius:16px;background:var(--accS);color:var(--acc);display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 18px}
+.up-title{font-size:20px;font-weight:800;margin-bottom:6px}
+.up-sub{font-size:13px;color:var(--dim);margin-bottom:24px;line-height:1.6}
+.up-btn{display:inline-block;padding:14px 32px;background:var(--acc);color:#fff;font-weight:700;font-size:15px;border-radius:11px;cursor:pointer}
+.up-hint{font-size:11px;color:var(--mut);margin-top:18px;line-height:1.6}
+.up-co{display:inline-block;padding:3px 10px;border-radius:20px;background:var(--accS);color:var(--acc);font-size:12px;font-weight:700;margin-bottom:14px}
+.banner{background:var(--accS);border:1px solid var(--acc)33;border-radius:8px;padding:9px 13px;font-size:12px;color:var(--acc);font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+
+@media (max-width:640px){
+  body{font-size:14px}
+  .hdr{padding:12px 14px;padding-top:max(12px,env(safe-area-inset-top));gap:8px}
+  .logo{font-size:16px}
+  .hdr-meta{display:none}
+  .coswitch button{padding:9px 14px;font-size:13px}
+  .btn-ghost,.btn-acc{padding:9px 13px;font-size:12px}
+  .wrap{padding:14px 12px}
+  .cards{grid-template-columns:1fr 1fr;gap:9px}
+  .card{padding:13px 13px 13px 16px}
+  .card-v{font-size:18px}
+  .card.c-crit{grid-column:1 / -1}
+  .controls{gap:8px}
+  .filter-row{display:flex;gap:7px;overflow-x:auto;width:100%;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .filter-row::-webkit-scrollbar{display:none}
+  .pill{padding:8px 15px;font-size:13px;flex-shrink:0}
+  .search-row{display:flex;gap:8px;width:100%}
+  .inp{flex:1;width:auto !important;padding:10px 12px;font-size:16px}
+  .sel{padding:10px 10px;font-size:14px}
+  .party-hd{flex-wrap:wrap;gap:10px;padding:14px;position:relative;padding-left:18px}
+  .sev-bar{position:absolute;left:0;top:0;bottom:0;min-height:0}
+  .party-main{flex:1 1 60%;min-width:0}
+  .party-name{font-size:15px;white-space:normal}
+  .party-sub{font-size:12px;margin-top:3px}
+  .party-amt{flex:0 0 auto;margin-left:auto}
+  .party-amt-v{font-size:18px}
+  .chev{position:absolute;top:14px;right:14px}
+  .party-actions{flex:1 1 100%;gap:8px;margin-top:2px}
+  .act{flex:1;justify-content:center;padding:12px;font-size:14px;border-radius:9px}
+  .inv-wrap{padding:0 14px 14px 18px}
+  .inv-wrap table,.inv-wrap thead,.inv-wrap tbody,.inv-wrap tr,.inv-wrap td{display:block;width:100%}
+  .inv-wrap thead{display:none}
+  .inv-wrap tr{border:1px solid var(--bdr);border-radius:9px;padding:11px 13px;margin-bottom:9px;background:var(--bg)}
+  .inv-wrap td{border:none;padding:3px 0;display:flex;justify-content:space-between;align-items:center}
+  .inv-wrap td::before{content:attr(data-l);font-size:11px;font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
+  .inv-wrap td.inv-amt{font-size:16px;font-weight:800;padding-top:7px;margin-top:5px;border-top:1px solid var(--bdr)}
+  .modal-bg{align-items:flex-end;padding:0}
+  .modal{max-width:100%;max-height:92vh;border-radius:18px 18px 0 0}
+  .modal-bd{padding:18px}
+  .msg-box{font-size:14px;max-height:40vh}
+  .modal-foot{flex-direction:column;padding-bottom:max(16px,env(safe-area-inset-bottom))}
+  .btn-pri,.btn-sec{width:100%;padding:14px;font-size:15px}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+/* ============ COMPANY CONFIG ============ */
+const COMPANIES = {
+  tube:    { id:"tube",    name:"Manhar Tube Corporation",    short:"Manhar Tube",    pdfName:"MANHAR TUBE CORPORATION",    tagline:"Steel Pipes & Fittings" },
+  trading: { id:"trading", name:"Manhar Trading Corporation", short:"Manhar Trading", pdfName:"MANHAR TRADING CORPORATION", tagline:"Steel Pipes & Fittings" },
+};
+let activeCo = "tube";
+const STORE = { tube:null, trading:null };   /* parsed data per company, in-memory only */
+const META  = { tube:null, trading:null };   /* {date, count} */
+
+let filter = "overdue";
+let search = "";
+let sortKey = "severity";
+let expanded = {};
+let modal = null;
+
+/* ============ Helpers ============ */
+const INR = n => { if(n==null) return "\u2014"; const a=Math.abs(n); let s; if(a>=1e7) s="\u20B9"+(a/1e7).toFixed(2)+" Cr"; else if(a>=1e5) s="\u20B9"+(a/1e5).toFixed(2)+" L"; else s="\u20B9"+a.toLocaleString("en-IN"); return n<0?"("+s+")":s; };
+const INRF = n => { if(n==null) return "\u2014"; const s="\u20B9"+Math.abs(n).toLocaleString("en-IN"); return n<0?"("+s+")":s; };
+const fD = d => { if(!d) return "\u2014"; const p=d.split("-"); const m=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][+p[1]-1]; return p[2]+" "+m+" "+p[0].slice(2); };
+const sevColor = o => o<=0?"--g":o<=15?"--y":o<=30?"--o":o<=60?"--r":"--cr";
+
+/* ============ Parser (auto-detects branch column) ============ */
+function parseSDOS(rows){
+  const num=v=>{ if(v==null) return 0; if(typeof v==="number") return isNaN(v)?0:v; const s=String(v).trim().replace(/,/g,""); const n=parseFloat(s); return isNaN(n)?0:n; };
+  const dstr=v=>v instanceof Date && !isNaN(v) ? v.getFullYear()+"-"+String(v.getMonth()+1).padStart(2,"0")+"-"+String(v.getDate()).padStart(2,"0") : null;
+  const DOCTYPES={INV:1,BRE:1,CRN:1,DRN:1,RCT:1,JRN:1,PMT:1};
+  const parties={}; let cur=null; let reportDate=null;
+  for(let i=0;i<rows.length;i++){
+    const r=rows[i]; if(!r) continue;
+    /* find report date from header */
+    if(reportDate===null){
+      for(const cell of r){ if(cell&&typeof cell==="string"){ const m=cell.match(/as on (\d{2})\/(\d{2})\/(\d{4})/); if(m){ reportDate=m[3]+"-"+m[2]+"-"+m[1]; } } }
+    }
+    /* Party name always in col 1 */
+    const c1=r[1]!=null?String(r[1]):"";
+    if(c1.includes("Party Name")){
+      cur=c1.split(":").slice(1).join(":").trim();
+      let crd=0; const c8=r[8]!=null?String(r[8]):"";
+      if(c8.includes("Credit Prd")){ const mm=c8.match(/(\d+)/); if(mm) crd=+mm[1]; }
+      if(!parties[cur]) parties[cur]={n:cur,c:crd,oa:0,iv:[]};
+      continue;
+    }
+    if(!cur) continue;
+    /* detect offset: doc type in col0 (Tube) or col1 (Trading branch) */
+    const c0v=r[0]!=null?String(r[0]).trim():"";
+    const c1v=r[1]!=null?String(r[1]).trim():"";
+    let off;
+    if(DOCTYPES[c0v]) off=0;
+    else if(DOCTYPES[c1v]) off=1;
+    else continue;
+    const dt=off===0?c0v:c1v;
+    const C_NUM=off+1,C_DATE=off+2,C_CRP=off+3,C_DUE=off+4,C_OVR=off+5,C_BILL=off+6,C_ONAC=off+7,C_PEND=off+8;
+    if(dt==="INV"){
+      parties[cur].iv.push({
+        d:r[C_NUM]!=null?String(r[C_NUM]).trim():"",
+        bd:dstr(r[C_DATE]), cr:Math.round(num(r[C_CRP])), dd:dstr(r[C_DUE]),
+        o:Math.round(num(r[C_OVR])), b:Math.round(num(r[C_BILL])),
+        p:num(r[C_PEND])>0?Math.round(num(r[C_PEND])):Math.round(num(r[C_BILL]))
+      });
+    } else if(dt==="BRE"){
+      parties[cur].oa+=Math.round(num(r[C_ONAC]));
+    }
+  }
+  const list=Object.values(parties).filter(p=>p.iv.length>0||p.oa>0);
+  return { list, reportDate };
+}
+
+/* ============ Derived ============ */
+function enrich(p){
+  const pending=p.iv.reduce((s,i)=>s+i.p,0);
+  const overdue=p.iv.filter(i=>i.o>0).reduce((s,i)=>s+i.p,0);
+  const net=pending-p.oa;
+  const maxD=p.iv.reduce((m,i)=>Math.max(m,i.o),0);
+  const overCnt=p.iv.filter(i=>i.o>0).length;
+  const prio=maxD>60?"CRITICAL":maxD>30?"HIGH":maxD>15?"MEDIUM":overdue>0?"LOW":"OK";
+  return {...p,pending,overdue,net,maxD,overCnt,prio,sev:overdue*(1+maxD/30)};
+}
+function curData(){ return STORE[activeCo]||[]; }
+function stats(){
+  const E=curData().map(enrich);
+  return { pending:E.reduce((s,p)=>s+p.pending,0), overdue:E.reduce((s,p)=>s+p.overdue,0), onacc:E.reduce((s,p)=>s+p.oa,0), net:E.reduce((s,p)=>s+p.net,0), oCnt:E.filter(p=>p.overdue>0).length, cCnt:E.filter(p=>p.maxD>60).length, total:E.length };
+}
+function visible(){
+  let l=curData().map(enrich);
+  if(filter==="overdue") l=l.filter(p=>p.overdue>0);
+  else if(filter==="critical") l=l.filter(p=>p.maxD>60);
+  else if(filter==="onacc") l=l.filter(p=>p.oa>0);
+  if(search.trim()){ const q=search.toLowerCase(); l=l.filter(p=>p.n.toLowerCase().includes(q)); }
+  if(sortKey==="severity") l.sort((a,b)=>b.sev-a.sev);
+  else if(sortKey==="pending") l.sort((a,b)=>b.pending-a.pending);
+  else if(sortKey==="days") l.sort((a,b)=>b.maxD-a.maxD);
+  else if(sortKey==="name") l.sort((a,b)=>a.n.localeCompare(b.n));
+  return l;
+}
+
+/* ============ Reminder text ============ */
+function reminderMsg(p){
+  const co=COMPANIES[activeCo];
+  const overInv=p.iv.filter(i=>i.o>0).sort((a,b)=>b.o-a.o);
+  const useInv=overInv.length>0?overInv:p.iv.slice().sort((a,b)=>b.o-a.o);
+  const lines=useInv.map(i=>"  \u2022 Inv #"+i.d+" dt "+fD(i.bd)+" \u2014 "+INRF(i.p)+(i.o>0?" ("+i.o+" days overdue)":" (within terms)")).join("\n");
+  const total=useInv.reduce((s,i)=>s+i.p,0);
+  let msg="Dear "+p.n+",\n\nGreetings from "+co.name+".\n\nThis is a gentle reminder regarding the following outstanding payment(s):\n\n"+lines+"\n\nTotal Outstanding: "+INRF(total);
+  if(p.oa>0) msg+="\nLess: Amount On Account: "+INRF(p.oa)+"\nNet Payable: "+INRF(total-p.oa);
+  msg+="\n\nWe request you to kindly arrange the payment at the earliest. If already paid, please share the payment details and ignore this message.\n\nThank you for your business.\n\nRegards,\n"+co.name;
+  return msg;
+}
+
+/* ============ PDF ============ */
+function makePDF(p){
+  const co=COMPANIES[activeCo];
+  const { jsPDF }=window.jspdf;
+  const doc=new jsPDF();
+  const overInv=p.iv.slice().sort((a,b)=>b.o-a.o);
+  const today=META[activeCo]?fDfull(META[activeCo].date):"";
+  doc.setFontSize(18); doc.setFont(undefined,"bold"); doc.setTextColor(20,30,50);
+  doc.text(co.pdfName, 105, 20, {align:"center"});
+  doc.setFontSize(9); doc.setFont(undefined,"normal"); doc.setTextColor(110,120,140);
+  doc.text(co.tagline, 105, 26, {align:"center"});
+  doc.setDrawColor(230,160,40); doc.setLineWidth(0.8); doc.line(20,30,190,30);
+  doc.setFontSize(13); doc.setFont(undefined,"bold"); doc.setTextColor(200,40,40);
+  doc.text("PAYMENT REMINDER", 105, 40, {align:"center"});
+  doc.setFontSize(10); doc.setFont(undefined,"normal"); doc.setTextColor(40,50,70);
+  if(today) doc.text("Date: "+today, 20, 50);
+  doc.setFont(undefined,"bold");
+  doc.text("To: "+p.n, 20, 57);
+  doc.setFont(undefined,"normal"); doc.setFontSize(9.5); doc.setTextColor(70,80,100);
+  doc.text("Sub: Reminder for outstanding payment", 20, 64);
+  doc.text("Dear Sir/Madam, please find below the details of your outstanding invoices:", 20, 71);
+  const rows=overInv.map(i=>[ i.d, fD(i.bd), fD(i.dd), i.o>0?i.o+" days":"Not due", "\u20B9"+i.p.toLocaleString("en-IN") ]);
+  doc.autoTable({ startY:77, head:[["Invoice #","Bill Date","Due Date","Overdue","Pending Amount"]], body:rows, theme:"grid", headStyles:{fillColor:[230,160,40],textColor:[20,30,50],fontStyle:"bold",fontSize:9}, bodyStyles:{fontSize:9,textColor:[40,50,70]}, columnStyles:{4:{halign:"right"},3:{halign:"center"}}, alternateRowStyles:{fillColor:[248,250,252]} });
+  let y=doc.lastAutoTable.finalY+8;
+  const totalPending=overInv.reduce((s,i)=>s+i.p,0);
+  doc.setFontSize(10); doc.setFont(undefined,"bold"); doc.setTextColor(20,30,50);
+  doc.text("Total Outstanding:", 130, y);
+  doc.text("\u20B9"+totalPending.toLocaleString("en-IN"), 190, y, {align:"right"});
+  if(p.oa>0){
+    y+=6; doc.setTextColor(40,120,80); doc.setFont(undefined,"normal");
+    doc.text("Less: On Account:", 130, y);
+    doc.text("\u20B9"+p.oa.toLocaleString("en-IN"), 190, y, {align:"right"});
+    y+=6; doc.setDrawColor(180,190,200); doc.line(128,y-3,190,y-3);
+    doc.setFont(undefined,"bold"); doc.setTextColor(200,40,40);
+    doc.text("Net Payable:", 130, y);
+    doc.text("\u20B9"+(totalPending-p.oa).toLocaleString("en-IN"), 190, y, {align:"right"});
+  }
+  y+=14;
+  doc.setFontSize(9); doc.setFont(undefined,"normal"); doc.setTextColor(70,80,100);
+  const note="We kindly request you to arrange the payment at your earliest convenience. If the payment has already been made, please share the details and ignore this reminder.";
+  doc.text(doc.splitTextToSize(note,170), 20, y);
+  y+=22;
+  doc.setFont(undefined,"bold"); doc.setTextColor(20,30,50);
+  doc.text("For "+co.name, 20, y);
+  doc.setFont(undefined,"normal"); doc.setFontSize(8.5); doc.setTextColor(120,130,150);
+  doc.text("This is a computer-generated reminder.", 20, y+18);
+  doc.save("Reminder_"+co.short.replace(/ /g,"")+"_"+p.n.replace(/[^a-zA-Z0-9]/g,"_").slice(0,28)+".pdf");
+}
+const fDfull=d=>{ if(!d) return ""; const p=d.split("-"); const m=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][+p[1]-1]; return p[2]+" "+m+" "+p[0]; };
+
+/* ============ Render ============ */
+function el(html){ const d=document.createElement("div"); d.innerHTML=html.trim(); return d.firstChild; }
+
+function coSwitcherHTML(){
+  return `<div class="coswitch">
+    ${Object.values(COMPANIES).map(c=>`<button data-co="${c.id}" class="${activeCo===c.id?'on':''}">${c.short}<span class="dot ${STORE[c.id]?'dot-loaded':'dot-empty'}"></span></button>`).join("")}
+  </div>`;
+}
+
+function render(){
+  const app=document.getElementById("app");
+  const co=COMPANIES[activeCo];
+  const loaded=!!STORE[activeCo];
+
+  /* HEADER (always shown) */
+  let html=`
+    <div class="hdr">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span class="logo">MTC Collections</span>
+        ${coSwitcherHTML()}
+      </div>
+      <div class="hdr-right">
+        <label class="btn-acc">\u2191 Upload<input type="file" accept=".xls,.xlsx" style="display:none" id="fileInput"></label>
+      </div>
+    </div>`;
+
+  if(!loaded){
+    /* EMPTY STATE for this company */
+    html+=`
+      <div class="wrap">
+        <div class="up-screen"><div class="up-box">
+          <div class="up-icon">\u{1F4E5}</div>
+          <div class="up-co">${co.short}</div>
+          <div class="up-title">Upload today's statement</div>
+          <div class="up-sub">Load the <b>Debtors Outstanding Statement</b> (SDOS) exported from Spectrum for ${co.name}. Your data stays on this device \u2014 nothing is uploaded to any server.</div>
+          <label class="up-btn">Choose Excel File<input type="file" accept=".xls,.xlsx" style="display:none" id="fileInput2"></label>
+          <div class="up-hint">Spectrum \u2192 Reports \u2192 Debtors Outstanding Statement \u2192 Export to Excel<br>Then open it here from your Files app.</div>
+        </div></div>
+      </div>`;
+    app.innerHTML=html;
+    wireHeader();
+    const fi2=document.getElementById("fileInput2"); if(fi2) fi2.onchange=e=>{if(e.target.files[0])loadFile(e.target.files[0])};
+    return;
+  }
+
+  const S=stats();
+  const list=visible();
+  const meta=META[activeCo];
+  html+=`
+    <div class="wrap">
+      <div class="banner">\u2705 ${co.name} \u00B7 ${meta&&meta.date?fDfull(meta.date):""} \u00B7 ${S.total} parties loaded</div>
+      <div class="cards">
+        <div class="card c-net"><div class="card-top"><div class="card-ico" style="background:#47556918;color:#475569">\u20B9</div><div class="card-l">Net Outstanding</div></div><div class="card-v mono" style="color:var(--tx)">${INR(S.net)}</div></div>
+        <div class="card c-over"><div class="card-top"><div class="card-ico" style="background:#DC262615;color:#DC2626">\u26A0</div><div class="card-l">Overdue</div></div><div class="card-v mono" style="color:var(--r)">${INR(S.overdue)}</div><div class="card-s">${S.oCnt} parties</div></div>
+        <div class="card c-pend"><div class="card-top"><div class="card-ico" style="background:#47556918;color:#475569">\u23F1</div><div class="card-l">Total Pending</div></div><div class="card-v mono" style="color:var(--tx)">${INR(S.pending)}</div></div>
+        <div class="card c-acc"><div class="card-top"><div class="card-ico" style="background:#2563EB15;color:#2563EB">\u21BA</div><div class="card-l">On Account</div></div><div class="card-v mono" style="color:var(--b)">${INR(S.onacc)}</div><div class="card-s">credits / advances</div></div>
+        ${S.cCnt>0?`<div class="card c-crit"><div class="card-top"><div class="card-ico" style="background:#B91C1C20;color:#B91C1C">\u{1F525}</div><div class="card-l">Critical 60d+</div></div><div class="card-v mono" style="color:var(--cr)">${S.cCnt}</div><div class="card-s">Call today</div></div>`:""}
+      </div>
+      <div class="controls">
+        <div class="filter-row">
+          <button class="pill p-over ${filter==='overdue'?'on':''}" data-f="overdue">Overdue <span class="ct">${S.oCnt}</span></button>
+          <button class="pill p-crit ${filter==='critical'?'on':''}" data-f="critical">60d+ <span class="ct">${S.cCnt}</span></button>
+          <button class="pill ${filter==='all'?'on':''}" data-f="all">All <span class="ct">${S.total}</span></button>
+          <button class="pill p-acc ${filter==='onacc'?'on':''}" data-f="onacc">On Account</button>
+        </div>
+        <div style="flex:1"></div>
+        <div class="search-row">
+          <input class="inp" id="search" placeholder="Search party..." value="${search}" style="width:170px">
+          <select class="sel" id="sort">
+            <option value="severity"${sortKey==='severity'?' selected':''}>Severity</option>
+            <option value="pending"${sortKey==='pending'?' selected':''}>Pending Amt</option>
+            <option value="days"${sortKey==='days'?' selected':''}>Days Overdue</option>
+            <option value="name"${sortKey==='name'?' selected':''}>Name</option>
+          </select>
+        </div>
+      </div>
+      <div class="plist" id="plist"></div>
+      <div class="foot">${co.name} \u00B7 Collections Dashboard \u00B7 Data stays on your device</div>
+    </div>`;
+  app.innerHTML=html;
+
+  const plist=document.getElementById("plist");
+  if(list.length===0){ plist.innerHTML='<div class="empty">No parties match this filter</div>'; }
+  else list.forEach(p=>plist.appendChild(partyCard(p)));
+
+  wireHeader();
+  app.querySelectorAll(".pill").forEach(b=>b.onclick=()=>{filter=b.dataset.f;render()});
+  const si=document.getElementById("search"); if(si) si.oninput=e=>{search=e.target.value;render();const x=document.getElementById("search");x.focus();x.setSelectionRange(x.value.length,x.value.length)};
+  const so=document.getElementById("sort"); if(so) so.onchange=e=>{sortKey=e.target.value;render()};
+}
+
+function wireHeader(){
+  document.querySelectorAll("[data-co]").forEach(b=>b.onclick=()=>{activeCo=b.dataset.co;expanded={};render()});
+  const fi=document.getElementById("fileInput"); if(fi) fi.onchange=e=>{if(e.target.files[0])loadFile(e.target.files[0])};
+}
+
+function partyCard(p){
+  const isOpen=expanded[p.n];
+  const c=sevColor(p.maxD);
+  const card=el(`
+    <div class="party">
+      <div class="party-hd">
+        <div class="sev-bar" style="background:var(${c})"></div>
+        <div class="party-main">
+          <div class="party-name">${p.n}</div>
+          <div class="party-sub">${p.overCnt>0?p.overCnt+" overdue bill"+(p.overCnt>1?"s":"")+" \u00B7 oldest "+p.maxD+"d":p.iv.length+" bill"+(p.iv.length!==1?"s":"")+" \u00B7 within terms"}${p.oa>0?" \u00B7 On A/c "+INR(p.oa):""}</div>
+        </div>
+        <div class="party-amt">
+          <div class="party-amt-v" style="color:var(${p.overdue>0?'--r':'--tx'})">${INRF(p.net)}</div>
+          <div class="party-amt-l">Net O/S</div>
+        </div>
+        <div class="party-actions">
+          ${p.iv.length>0?`<button class="act act-pdf" data-pdf="1">\u{1F4C4} PDF</button><button class="act act-wa" data-wa="1">WhatsApp</button>`:""}
+        </div>
+        <div class="chev ${isOpen?'open':''}">\u25BE</div>
+      </div>
+      <div class="inv-body"></div>
+    </div>
+  `);
+  card.querySelector(".party-hd").onclick=(e)=>{ if(e.target.closest(".act")) return; expanded[p.n]=!expanded[p.n]; render(); };
+  const pdfBtn=card.querySelector("[data-pdf]"); if(pdfBtn) pdfBtn.onclick=()=>makePDF(p);
+  const waBtn=card.querySelector("[data-wa]"); if(waBtn) waBtn.onclick=()=>{modal=p;renderModal()};
+  if(isOpen){
+    const body=card.querySelector(".inv-body");
+    const invs=p.iv.slice().sort((a,b)=>b.o-a.o);
+    body.appendChild(el(`
+      <div class="inv-wrap">
+        ${p.oa>0?`<div class="oa-note">On Account credit available: ${INRF(p.oa)} \u2014 adjust before sending reminder</div>`:""}
+        <table>
+          <thead><tr><th>Invoice #</th><th>Bill Date</th><th>Credit</th><th>Due Date</th><th>Overdue</th><th style="text-align:right">Bill Amt</th><th style="text-align:right">Pending</th></tr></thead>
+          <tbody>
+            ${invs.map(i=>{ const ic=sevColor(i.o); return `<tr>
+                <td class="mono" data-l="Invoice" style="color:var(--dim)">#${i.d}</td>
+                <td data-l="Bill Date" style="color:var(--dim)">${fD(i.bd)}</td>
+                <td data-l="Credit" style="text-align:center;color:var(--mut)" class="mono">${i.cr>0?i.cr+"d":"\u2014"}</td>
+                <td data-l="Due Date" style="color:var(${i.o>0?'--r':'--dim'});font-weight:${i.o>0?'600':'400'}">${fD(i.dd)}</td>
+                <td data-l="Overdue">${i.o>0?`<span class="tag" style="color:var(${ic});background:var(${ic})20">${i.o}d</span>`:`<span style="color:var(--g);font-size:11px">Within terms</span>`}</td>
+                <td data-l="Bill Amt" style="text-align:right;color:var(--mut)" class="mono">${INRF(i.b)}</td>
+                <td data-l="Pending" class="mono inv-amt" style="text-align:right;font-weight:700">${INRF(i.p)}</td>
+              </tr>`; }).join("")}
+          </tbody>
+        </table>
+      </div>
+    `));
+  }
+  return card;
+}
+
+function renderModal(){
+  const p=modal; const msg=reminderMsg(p);
+  const old=document.getElementById("modalBg"); if(old) old.remove();
+  const m=el(`
+    <div class="modal-bg" id="modalBg">
+      <div class="modal">
+        <div class="modal-hd">
+          <div><div style="font-size:15px;font-weight:700">WhatsApp Reminder</div><div style="font-size:11px;color:var(--mut);margin-top:2px">${p.n}</div></div>
+          <button id="closeModal" style="font-size:20px;color:var(--mut)">\u00D7</button>
+        </div>
+        <div class="modal-bd"><div class="msg-box" id="msgBox"></div></div>
+        <div class="modal-foot">
+          <button class="btn-pri" id="waOpen">Open in WhatsApp</button>
+          <button class="btn-sec" id="copyMsg">Copy Message</button>
+          <button class="btn-sec" id="pdfFromModal">\u{1F4C4} Download PDF</button>
+        </div>
+      </div>
+    </div>
+  `);
+  document.body.appendChild(m);
+  document.getElementById("msgBox").textContent=msg;
+  document.getElementById("closeModal").onclick=()=>{modal=null;m.remove()};
+  document.getElementById("modalBg").onclick=e=>{if(e.target.id==="modalBg"){modal=null;m.remove()}};
+  document.getElementById("waOpen").onclick=()=>{window.open("https://wa.me/?text="+encodeURIComponent(msg),"_blank")};
+  document.getElementById("copyMsg").onclick=()=>{navigator.clipboard.writeText(msg);const b=document.getElementById("copyMsg");b.textContent="Copied!";setTimeout(()=>{if(b)b.textContent="Copy Message"},1500)};
+  document.getElementById("pdfFromModal").onclick=()=>makePDF(p);
+}
+
+/* ============ File loading ============ */
+function loadFile(file){
+  const rd=new FileReader();
+  rd.onload=e=>{
+    try{
+      const wb=XLSX.read(new Uint8Array(e.target.result),{type:"array",cellDates:true});
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:null});
+      const {list,reportDate}=parseSDOS(rows);
+      if(list.length===0){ alert("No party data found. Please make sure this is the Debtors Outstanding Statement (SDOS) export from Spectrum."); return; }
+      /* auto-detect company by name in header */
+      let detected=activeCo;
+      const headerText=rows.slice(0,6).flat().filter(Boolean).join(" ").toUpperCase();
+      if(headerText.includes("TUBE")) detected="tube";
+      else if(headerText.includes("TRADING")) detected="trading";
+      STORE[detected]=list;
+      META[detected]={date:reportDate,count:list.length};
+      activeCo=detected;
+      filter="overdue"; search=""; expanded={};
+      render();
+    }catch(err){ alert("Could not read this file.\n\n"+err.message); }
+  };
+  rd.readAsArrayBuffer(file);
+}
+
+render();
+</script>
+</body>
+</html>
