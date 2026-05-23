@@ -272,7 +272,7 @@ function reminderMsg(p){
   const isTube=activeCo==="tube";
   const overInv=p.iv.filter(i=>i.o>0).sort((a,b)=>b.o-a.o);
   const useInv=overInv.length>0?overInv:p.iv.slice().sort((a,b)=>b.o-a.o);
-  const lines=useInv.map(i=>"  \u2022 Inv #"+i.d+" dt "+fD(i.bd)+" \u2014 "+INRF(i.p)+(i.o>0?" ("+i.o+" days overdue)":" (within terms)")).join("\n");
+  const lines=useInv.map(i=>"  \u2022 Inv #"+i.d+" dt "+fD(i.bd)+(i.cr>0?" | Cr: "+i.cr+"d":"")+(i.dd?" | Due: "+fD(i.dd):"")+"\n    "+INRF(i.p)+(i.o>0?" ("+i.o+" days overdue)":" (within terms)")).join("\n");
   const total=useInv.reduce((s,i)=>s+i.p,0);
   const net=p.oa>0?total-p.oa:total;
   const bankTube="Bank: INDUSIND BANK LIMITED\nA/C No: 201036004574\nIFSC: INDB0000470";
@@ -442,7 +442,7 @@ function wireHeader(){
 
 function partyCard(p){
   const isOpen=expanded[p.n];
-  const c=sevColor(p.maxD);
+  const c=p.net<0?"--g":sevColor(p.maxD);
   const card=el(`
     <div class="party">
       <div class="party-hd">
@@ -452,11 +452,11 @@ function partyCard(p){
           <div class="party-sub">${p.overCnt>0?p.overCnt+" overdue bill"+(p.overCnt>1?"s":"")+" \u00B7 oldest "+p.maxD+"d":p.iv.length+" bill"+(p.iv.length!==1?"s":"")+" \u00B7 within terms"}${p.oa>0?" \u00B7 On A/c "+INR(p.oa):""}${p.sm?' \u00B7 <span style="color:var(--b);font-weight:600">'+p.sm+'</span>':""}</div>
         </div>
         <div class="party-amt">
-          <div class="party-amt-v" style="color:var(${p.overdue>0?'--r':'--tx'})">${INRF(p.net)}</div>
-          <div class="party-amt-l">Net O/S</div>
+          <div class="party-amt-v" style="color:var(${p.net<0?'--g':p.overdue>0?'--r':'--tx'})">${INRF(p.net)}</div>
+          <div class="party-amt-l">${p.net<0?'Credit Balance':'Net O/S'}</div>
         </div>
         <div class="party-actions">
-          ${p.iv.length>0?`<button class="act act-pdf" data-pdf="1">\u{1F4C4} PDF</button><button class="act act-wa" data-wa="1">WhatsApp</button>`:""}
+          ${p.net<0?`<span style="font-size:11px;color:var(--g);font-weight:600;padding:7px 11px">✓ Credit party</span>`:p.iv.length>0?`<button class="act act-pdf" data-pdf="1">\u{1F4C4} PDF</button><button class="act act-wa" data-wa="1">WhatsApp</button>`:""}
         </div>
         <div class="chev ${isOpen?'open':''}">\u25BE</div>
       </div>
