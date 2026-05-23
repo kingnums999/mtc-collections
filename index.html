@@ -272,7 +272,7 @@ function reminderMsg(p){
   const isTube=activeCo==="tube";
   const overInv=p.iv.filter(i=>i.o>0).sort((a,b)=>b.o-a.o);
   const useInv=overInv.length>0?overInv:p.iv.slice().sort((a,b)=>b.o-a.o);
-  const lines=useInv.map(i=>"  \u2022 Inv #"+i.d+" dt "+fD(i.bd)+(i.cr>0?" | Cr: "+i.cr+"d":"")+(i.dd?" | Due: "+fD(i.dd):"")+"\n    "+INRF(i.p)+(i.o>0?" ("+i.o+" days overdue)":" (within terms)")).join("\n");
+  const lines=useInv.map(i=>"  \u2022 Inv #"+i.d+" \u2014 "+INRF(i.p)+"\n    "+fD(i.bd)+(i.cr>0?" | Cr: "+i.cr+"d":"")+(i.dd?" | Due: "+fD(i.dd):"")+"\n    "+( i.o>0?i.o+" days overdue":"Within terms")).join("\n\n");
   const total=useInv.reduce((s,i)=>s+i.p,0);
   const net=p.oa>0?total-p.oa:total;
   const bankTube="Bank: INDUSIND BANK LIMITED\nA/C No: 201036004574\nIFSC: INDB0000470";
