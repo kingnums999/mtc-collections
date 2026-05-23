@@ -269,14 +269,22 @@ function visible(){
 /* ============ Reminder text ============ */
 function reminderMsg(p){
   const co=COMPANIES[activeCo];
+  const isTube=activeCo==="tube";
   const overInv=p.iv.filter(i=>i.o>0).sort((a,b)=>b.o-a.o);
   const useInv=overInv.length>0?overInv:p.iv.slice().sort((a,b)=>b.o-a.o);
   const lines=useInv.map(i=>"  \u2022 Inv #"+i.d+" dt "+fD(i.bd)+" \u2014 "+INRF(i.p)+(i.o>0?" ("+i.o+" days overdue)":" (within terms)")).join("\n");
   const total=useInv.reduce((s,i)=>s+i.p,0);
-  let msg="Dear "+p.n+",\n\nGreetings from "+co.name+"."+(p.sm?"\n(Salesman: "+p.sm+")":"")+
-    "\n\nThis is a gentle reminder regarding the following outstanding payment(s):\n\n"+lines+"\n\nTotal Outstanding: "+INRF(total);
-  if(p.oa>0) msg+="\nLess: Amount On Account: "+INRF(p.oa)+"\nNet Payable: "+INRF(total-p.oa);
-  msg+="\n\nWe request you to kindly arrange the payment at the earliest. If already paid, please share the payment details and ignore this message.\n\nThank you for your business.\n\nRegards,\n"+co.name;
+  const net=p.oa>0?total-p.oa:total;
+  const bankTube="Bank: INDUSIND BANK LIMITED\nA/C No: 201036004574\nIFSC: INDB0000470";
+  const bankTr="Bank: INDUSIND BANK LIMITED\nA/C No: 201031471726\nIFSC: INDB0000470";
+  let msg="Customer: "+p.n;
+  if(p.sm) msg+="\nSalesman: "+p.sm;
+  msg+="\n\nThis is a gentle reminder regarding the following outstanding payment(s):\n\n"+lines;
+  msg+="\n\nTotal Outstanding: "+INRF(total);
+  if(p.oa>0) msg+="\nLess On Account: "+INRF(p.oa)+"\nNet Payable: "+INRF(net);
+  msg+="\n\nKindly request you to RTGS/NEFT the payment to our account today.\n\n";
+  msg+=(isTube?bankTube:bankTr);
+  msg+="\n\nRegards\n"+(isTube?"Manhar Tube Corporation":"Manhar Trading Corporation");
   return msg;
 }
 
