@@ -174,6 +174,7 @@ const META  = { tube:null, trading:null };   /* {date, count} */
 let filter = "overdue";
 let search = "";
 let sortKey = "severity";
+let salesFilter = "";
 let expanded = {};
 let modal = null;
 
@@ -187,25 +188,28 @@ const sevColor = o => o<=0?"--g":o<=15?"--y":o<=30?"--o":o<=60?"--r":"--cr";
 function parseSDOS(rows){
   const num=v=>{ if(v==null) return 0; if(typeof v==="number") return isNaN(v)?0:v; const s=String(v).trim().replace(/,/g,""); const n=parseFloat(s); return isNaN(n)?0:n; };
   const dstr=v=>v instanceof Date && !isNaN(v) ? v.getFullYear()+"-"+String(v.getMonth()+1).padStart(2,"0")+"-"+String(v.getDate()).padStart(2,"0") : null;
+  const sstr=v=>{ if(!v||v==="null") return ""; const s=String(v).trim(); return s==="nan"||s==="undefined"?"":s; };
   const DOCTYPES={INV:1,BRE:1,CRN:1,DRN:1,RCT:1,JRN:1,PMT:1};
   const parties={}; let cur=null; let reportDate=null;
   for(let i=0;i<rows.length;i++){
     const r=rows[i]; if(!r) continue;
-    /* find report date from header */
     if(reportDate===null){
       for(const cell of r){ if(cell&&typeof cell==="string"){ const m=cell.match(/as on (\d{2})\/(\d{2})\/(\d{4})/); if(m){ reportDate=m[3]+"-"+m[2]+"-"+m[1]; } } }
     }
-    /* Party name always in col 1 */
+    /* Also detect date from top rows: Date : DD/MM/YYYY */
+    if(reportDate===null){
+      for(const cell of r){ if(cell&&typeof cell==="string"){ const m=cell.match(/Date\s*:\s*(\d{2})\/(\d{2})\/(\d{4})/); if(m){ reportDate=m[3]+"-"+m[2]+"-"+m[1]; } } }
+    }
     const c1=r[1]!=null?String(r[1]):"";
     if(c1.includes("Party Name")){
       cur=c1.split(":").slice(1).join(":").trim();
-      let crd=0; const c8=r[8]!=null?String(r[8]):"";
-      if(c8.includes("Credit Prd")){ const mm=c8.match(/(\d+)/); if(mm) crd=+mm[1]; }
-      if(!parties[cur]) parties[cur]={n:cur,c:crd,oa:0,iv:[]};
+      /* Scan all cells for Credit Prd - position varies by file version */
+      let crd=0;
+      for(const cell of r){ if(cell&&String(cell).includes("Credit Prd")){ const mm=String(cell).match(/(\d+)/); if(mm) crd=+mm[1]; break; } }
+      if(!parties[cur]) parties[cur]={n:cur,c:crd,oa:0,iv:[],sm:""};
       continue;
     }
     if(!cur) continue;
-    /* detect offset: doc type in col0 (Tube) or col1 (Trading branch) */
     const c0v=r[0]!=null?String(r[0]).trim():"";
     const c1v=r[1]!=null?String(r[1]).trim():"";
     let off;
@@ -213,13 +217,17 @@ function parseSDOS(rows){
     else if(DOCTYPES[c1v]) off=1;
     else continue;
     const dt=off===0?c0v:c1v;
-    const C_NUM=off+1,C_DATE=off+2,C_CRP=off+3,C_DUE=off+4,C_OVR=off+5,C_BILL=off+6,C_ONAC=off+7,C_PEND=off+8;
+    /* Salesman at off+3, then Crp at off+4, Due at off+5, Ovr at off+6, Bill at off+7, OnAcc at off+8, Pending at off+9 */
+    const C_NUM=off+1,C_DATE=off+2,C_SALES=off+3,C_CRP=off+4,C_DUE=off+5,C_OVR=off+6,C_BILL=off+7,C_ONAC=off+8,C_PEND=off+9;
     if(dt==="INV"){
+      const sm=sstr(r[C_SALES]);
+      if(sm && !parties[cur].sm) parties[cur].sm=sm;
       parties[cur].iv.push({
         d:r[C_NUM]!=null?String(r[C_NUM]).trim():"",
         bd:dstr(r[C_DATE]), cr:Math.round(num(r[C_CRP])), dd:dstr(r[C_DUE]),
         o:Math.round(num(r[C_OVR])), b:Math.round(num(r[C_BILL])),
-        p:num(r[C_PEND])>0?Math.round(num(r[C_PEND])):Math.round(num(r[C_BILL]))
+        p:num(r[C_PEND])>0?Math.round(num(r[C_PEND])):Math.round(num(r[C_BILL])),
+        sm:sm
       });
     } else if(dt==="BRE"){
       parties[cur].oa+=Math.round(num(r[C_ONAC]));
@@ -237,7 +245,7 @@ function enrich(p){
   const maxD=p.iv.reduce((m,i)=>Math.max(m,i.o),0);
   const overCnt=p.iv.filter(i=>i.o>0).length;
   const prio=maxD>60?"CRITICAL":maxD>30?"HIGH":maxD>15?"MEDIUM":overdue>0?"LOW":"OK";
-  return {...p,pending,overdue,net,maxD,overCnt,prio,sev:overdue*(1+maxD/30)};
+  return {...p,pending,overdue,net,maxD,overCnt,prio,sev:overdue*(1+maxD/30),sm:p.sm||""};
 }
 function curData(){ return STORE[activeCo]||[]; }
 function stats(){
@@ -250,6 +258,7 @@ function visible(){
   else if(filter==="critical") l=l.filter(p=>p.maxD>60);
   else if(filter==="onacc") l=l.filter(p=>p.oa>0);
   if(search.trim()){ const q=search.toLowerCase(); l=l.filter(p=>p.n.toLowerCase().includes(q)); }
+  if(salesFilter){ l=l.filter(p=>p.sm===salesFilter); }
   if(sortKey==="severity") l.sort((a,b)=>b.sev-a.sev);
   else if(sortKey==="pending") l.sort((a,b)=>b.pending-a.pending);
   else if(sortKey==="days") l.sort((a,b)=>b.maxD-a.maxD);
@@ -264,7 +273,8 @@ function reminderMsg(p){
   const useInv=overInv.length>0?overInv:p.iv.slice().sort((a,b)=>b.o-a.o);
   const lines=useInv.map(i=>"  \u2022 Inv #"+i.d+" dt "+fD(i.bd)+" \u2014 "+INRF(i.p)+(i.o>0?" ("+i.o+" days overdue)":" (within terms)")).join("\n");
   const total=useInv.reduce((s,i)=>s+i.p,0);
-  let msg="Dear "+p.n+",\n\nGreetings from "+co.name+".\n\nThis is a gentle reminder regarding the following outstanding payment(s):\n\n"+lines+"\n\nTotal Outstanding: "+INRF(total);
+  let msg="Dear "+p.n+",\n\nGreetings from "+co.name+"."+(p.sm?"\n(Salesman: "+p.sm+")":"")+
+    "\n\nThis is a gentle reminder regarding the following outstanding payment(s):\n\n"+lines+"\n\nTotal Outstanding: "+INRF(total);
   if(p.oa>0) msg+="\nLess: Amount On Account: "+INRF(p.oa)+"\nNet Payable: "+INRF(total-p.oa);
   msg+="\n\nWe request you to kindly arrange the payment at the earliest. If already paid, please share the payment details and ignore this message.\n\nThank you for your business.\n\nRegards,\n"+co.name;
   return msg;
@@ -288,6 +298,7 @@ function makePDF(p){
   if(today) doc.text("Date: "+today, 20, 50);
   doc.setFont(undefined,"bold");
   doc.text("To: "+p.n, 20, 57);
+  if(p.sm){ doc.setFont(undefined,"normal"); doc.setFontSize(9); doc.setTextColor(80,100,150); doc.text("Salesman: "+p.sm, 20, 63); }
   doc.setFont(undefined,"normal"); doc.setFontSize(9.5); doc.setTextColor(70,80,100);
   doc.text("Sub: Reminder for outstanding payment", 20, 64);
   doc.text("Dear Sir/Madam, please find below the details of your outstanding invoices:", 20, 71);
@@ -394,6 +405,10 @@ function render(){
             <option value="days"${sortKey==='days'?' selected':''}>Days Overdue</option>
             <option value="name"${sortKey==='name'?' selected':''}>Name</option>
           </select>
+          <select class="sel" id="salesSel">
+            <option value="">All Salesmen</option>
+            ${[...new Set(curData().map(p=>p.sm).filter(Boolean))].sort().map(s=>`<option value="${s}"${salesFilter===s?' selected':''}>${s}</option>`).join("")}
+          </select>
         </div>
       </div>
       <div class="plist" id="plist"></div>
@@ -409,6 +424,7 @@ function render(){
   app.querySelectorAll(".pill").forEach(b=>b.onclick=()=>{filter=b.dataset.f;render()});
   const si=document.getElementById("search"); if(si) si.oninput=e=>{search=e.target.value;render();const x=document.getElementById("search");x.focus();x.setSelectionRange(x.value.length,x.value.length)};
   const so=document.getElementById("sort"); if(so) so.onchange=e=>{sortKey=e.target.value;render()};
+  const ss=document.getElementById("salesSel"); if(ss) ss.onchange=e=>{salesFilter=e.target.value;render()};
 }
 
 function wireHeader(){
@@ -425,7 +441,7 @@ function partyCard(p){
         <div class="sev-bar" style="background:var(${c})"></div>
         <div class="party-main">
           <div class="party-name">${p.n}</div>
-          <div class="party-sub">${p.overCnt>0?p.overCnt+" overdue bill"+(p.overCnt>1?"s":"")+" \u00B7 oldest "+p.maxD+"d":p.iv.length+" bill"+(p.iv.length!==1?"s":"")+" \u00B7 within terms"}${p.oa>0?" \u00B7 On A/c "+INR(p.oa):""}</div>
+          <div class="party-sub">${p.overCnt>0?p.overCnt+" overdue bill"+(p.overCnt>1?"s":"")+" \u00B7 oldest "+p.maxD+"d":p.iv.length+" bill"+(p.iv.length!==1?"s":"")+" \u00B7 within terms"}${p.oa>0?" \u00B7 On A/c "+INR(p.oa):""}${p.sm?' \u00B7 <span style="color:var(--b);font-weight:600">'+p.sm+'</span>':""}</div>
         </div>
         <div class="party-amt">
           <div class="party-amt-v" style="color:var(${p.overdue>0?'--r':'--tx'})">${INRF(p.net)}</div>
@@ -449,7 +465,7 @@ function partyCard(p){
       <div class="inv-wrap">
         ${p.oa>0?`<div class="oa-note">On Account credit available: ${INRF(p.oa)} \u2014 adjust before sending reminder</div>`:""}
         <table>
-          <thead><tr><th>Invoice #</th><th>Bill Date</th><th>Credit</th><th>Due Date</th><th>Overdue</th><th style="text-align:right">Bill Amt</th><th style="text-align:right">Pending</th></tr></thead>
+          <thead><tr><th>Invoice #</th><th>Bill Date</th><th>Credit</th><th>Due Date</th><th>Overdue</th><th>Salesman</th><th style="text-align:right">Bill Amt</th><th style="text-align:right">Pending</th></tr></thead>
           <tbody>
             ${invs.map(i=>{ const ic=sevColor(i.o); return `<tr>
                 <td class="mono" data-l="Invoice" style="color:var(--dim)">#${i.d}</td>
@@ -457,6 +473,7 @@ function partyCard(p){
                 <td data-l="Credit" style="text-align:center;color:var(--mut)" class="mono">${i.cr>0?i.cr+"d":"\u2014"}</td>
                 <td data-l="Due Date" style="color:var(${i.o>0?'--r':'--dim'});font-weight:${i.o>0?'600':'400'}">${fD(i.dd)}</td>
                 <td data-l="Overdue">${i.o>0?`<span class="tag" style="color:var(${ic});background:var(${ic})20">${i.o}d</span>`:`<span style="color:var(--g);font-size:11px">Within terms</span>`}</td>
+                <td data-l="Salesman" style="color:var(--b);font-size:11px;font-weight:600">${i.sm||"\u2014"}</td>
                 <td data-l="Bill Amt" style="text-align:right;color:var(--mut)" class="mono">${INRF(i.b)}</td>
                 <td data-l="Pending" class="mono inv-amt" style="text-align:right;font-weight:700">${INRF(i.p)}</td>
               </tr>`; }).join("")}
