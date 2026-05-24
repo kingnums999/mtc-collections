@@ -277,7 +277,8 @@ function reminderMsg(p){
   const net=p.oa>0?total-p.oa:total;
   const bankTube="Bank: INDUSIND BANK LIMITED\nA/C No: 201036004574\nIFSC: INDB0000470";
   const bankTr="Bank: INDUSIND BANK LIMITED\nA/C No: 201031471726\nIFSC: INDB0000470";
-  let msg="Customer: "+p.n;
+  let msg="\uD83D\uDD14 *PAYMENT REMINDER*\n\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\n";
+  msg+="Customer: "+p.n;
   if(p.sm) msg+="\nSalesman: "+p.sm;
   msg+="\n\nThis is a gentle reminder regarding the following outstanding payment(s):\n\n"+lines;
   msg+="\n\nTotal Outstanding: "+INRF(total);
@@ -285,6 +286,7 @@ function reminderMsg(p){
   msg+="\n\nKindly request you to RTGS/NEFT the payment to our account today.\n\n";
   msg+=(isTube?bankTube:bankTr);
   msg+="\n\nRegards\n"+(isTube?"Manhar Tube Corporation":"Manhar Trading Corporation");
+  msg+="\n\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015";
   return msg;
 }
 
