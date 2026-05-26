@@ -280,9 +280,9 @@ function reminderMsg(p){
   let msg="\uD83D\uDD14 *PAYMENT REMINDER*\n\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\n";
   msg+="Customer: "+p.n;
   if(p.sm) msg+="\nSalesman: "+p.sm;
+  msg+="\n\n\uD83D\uDCB0 *Total Outstanding: "+INRF(total)+"*";
+  if(p.oa>0) msg+="\n   Less On Account: "+INRF(p.oa)+"\n   *Net Payable: "+INRF(net)+"*";
   msg+="\n\nThis is a gentle reminder regarding the following outstanding payment(s):\n\n"+lines;
-  msg+="\n\nTotal Outstanding: "+INRF(total);
-  if(p.oa>0) msg+="\nLess On Account: "+INRF(p.oa)+"\nNet Payable: "+INRF(net);
   msg+="\n\nKindly request you to RTGS/NEFT the payment to our account today.\n\n";
   msg+=(isTube?bankTube:bankTr);
   msg+="\n\nRegards\n"+(isTube?"Manhar Tube Corporation":"Manhar Trading Corporation");
