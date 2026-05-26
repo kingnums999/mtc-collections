@@ -277,7 +277,9 @@ function reminderMsg(p){
   const net=p.oa>0?total-p.oa:total;
   const bankTube="Bank: INDUSIND BANK LIMITED\nA/C No: 201036004574\nIFSC: INDB0000470";
   const bankTr="Bank: INDUSIND BANK LIMITED\nA/C No: 201031471726\nIFSC: INDB0000470";
+  const todayStr=(()=>{const d=new Date();const m=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()];return d.getDate()+" "+m+" "+d.getFullYear();})();
   let msg="\uD83D\uDD14 *PAYMENT REMINDER*\n\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\n";
+  msg+="Date: "+todayStr+"\n";
   msg+="Customer: "+p.n;
   if(p.sm) msg+="\nSalesman: "+p.sm;
   msg+="\n\n\uD83D\uDCB0 *Total Outstanding: "+INRF(total)+"*";
